@@ -62,21 +62,28 @@ using namespace facebook::react;
         } else {
             NSLog(@"%@", [error localizedDescription]);
         }
-        
+
         _output = [[AVCaptureMetadataOutput alloc] init];
         [_output setMetadataObjectsDelegate:self queue:dispatch_get_main_queue()];
         [_session addOutput:_output];
-        
+
         _output.metadataObjectTypes = [ReactNativeScannerView metadataObjectTypes];
-        
+
         _prevLayer = [AVCaptureVideoPreviewLayer layerWithSession:_session];
         _prevLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
         [_view.layer addSublayer:_prevLayer];
-        [_session startRunning];
-        
+
+        // Create a dispatch queue.
+        dispatch_queue_t sessionQueue = dispatch_queue_create("session queue", DISPATCH_QUEUE_SERIAL);
+
+        // Use dispatch_async to call the startRunning method on the sessionQueue.
+        dispatch_async(sessionQueue, ^{
+            [self->_session startRunning];
+        });
+
         self.contentView = _view;
     }
-    
+
     return self;
 }
 
@@ -183,14 +190,57 @@ using namespace facebook::react;
     }
 }
 
+- (void)releaseCamera {
+
+    NSLog(@"%@", @"Release Camera");
+
+    if (_session != nil) {
+      // Stop the session
+      [_session stopRunning];
+
+      // Release the session, input, output, and preview layer
+      _session = nil;
+      _input = nil;
+      _output = nil;
+      _prevLayer = nil;
+
+    }
+}
+
+- (void)enableFlashlight {
+    if ([_device hasTorch] && [_device isTorchModeSupported:AVCaptureTorchModeOn]) {
+        NSError *error = nil;
+        if ([_device lockForConfiguration:&error]) {
+            [_device setTorchMode:AVCaptureTorchModeOn];
+            [_device unlockForConfiguration];
+        } else {
+            // Handle error
+            NSLog(@"%@", [error localizedDescription]);
+        }
+    }
+}
+
+- (void)disableFlashlight {
+    if ([_device hasTorch] && [_device isTorchModeSupported:AVCaptureTorchModeOff]) {
+        NSError *error = nil;
+        if ([_device lockForConfiguration:&error]) {
+            [_device setTorchMode:AVCaptureTorchModeOff];
+            [_device unlockForConfiguration];
+        } else {
+            // Handle error
+            NSLog(@"%@", [error localizedDescription]);
+        }
+    }
+}
+
 - (void)updateProps:(Props::Shared const &)props oldProps:(Props::Shared const &)oldProps
 {
     const auto &oldViewProps = *std::static_pointer_cast<ReactNativeScannerViewProps const>(_props);
     const auto &newViewProps = *std::static_pointer_cast<ReactNativeScannerViewProps const>(props);
-    
+
     pauseAfterCapture = newViewProps.pauseAfterCapture;
     [self setIsActive:newViewProps.isActive];
-    
+
     [super updateProps:props oldProps:oldProps];
 }
 
@@ -221,6 +271,10 @@ using namespace facebook::react;
 
 - (void)stopScanning {
     [self setIsActive:NO];
+}
+
+- (void)handleCommand:(nonnull const NSString *)commandName args:(nonnull const NSArray *)args {
+    RCTReactNativeScannerViewHandleCommand(self, commandName, args);
 }
 
 @end

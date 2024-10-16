@@ -19,6 +19,18 @@ type Event = Readonly<{
   target: Int32;
 }>;
 
+interface NativeCommands {
+  enableFlashlight: (
+    viewRef: React.ElementRef<HostComponent<NativeProps>>
+  ) => Promise<void>;
+  disableFlashlight: (
+    viewRef: React.ElementRef<HostComponent<NativeProps>>
+  ) => Promise<void>;
+  releaseCamera: (
+    viewRef: React.ElementRef<HostComponent<NativeProps>>
+  ) => Promise<void>;
+}
+
 export interface NativeProps extends ViewProps {
   pauseAfterCapture?: boolean,
   isActive?: boolean,
@@ -37,7 +49,10 @@ export const Commands: NativeCommands = codegenNativeCommands<NativeCommands>({
     'pausePreview',
     'resumePreview',
     'startScanning',
-    'stopScanning'
+    'stopScanning',
+    'enableFlashlight',
+    'disableFlashlight',
+    'releaseCamera'
   ],
 });
 
